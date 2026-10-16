@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>How wrong is your AI, really? · Error-rate calculator</title>
-<meta name="description" content="You tested your AI on some examples and counted the mistakes. See the range the real error rate probably sits in, how many examples you need, and whether a change really helped. Runs in your browser.">
+<meta name="description" content="You tested your AI on some examples and counted its mistakes. See how often it is really likely to be wrong, how many examples you need to test, and whether a change really helped. Free, and it runs in your browser.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="How wrong is your AI, really?">
 <meta property="og:description" content="3 mistakes in 50 examples isn't 6%. It's somewhere between 2.1% and 16.2%. A free calculator for the real error rate, how many examples you need, and whether a change really helped.">
@@ -143,11 +143,29 @@
   .how p { color: var(--muted); margin-top: 8px; font-size: 15px; }
   code { font: 400 .92em var(--mono); background: var(--raise); padding: 1px 6px; border-radius: 4px; }
 
+  /* Background: drifting dots and faint links in devinhuber.com's colours, as on its
+     own pages. Full strength in the margins, dimmed behind the text column, still for
+     anyone who prefers reduced motion. The cards are opaque, so it never runs behind
+     the numbers. */
+  .bgfx { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+  .bgfx::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(60% 50% at 8% 12%, rgba(167,139,250,.10), transparent 70%),
+                radial-gradient(55% 50% at 94% 88%, rgba(94,234,212,.07), transparent 70%);
+  }
+  #bgDots {
+    position: absolute; inset: 0; width: 100%; height: 100%; opacity: .85;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(50% - 540px), rgba(0,0,0,.3) calc(50% - 490px), rgba(0,0,0,.3) calc(50% + 490px), #000 calc(50% + 540px), #000 100%);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(50% - 540px), rgba(0,0,0,.3) calc(50% - 490px), rgba(0,0,0,.3) calc(50% + 490px), #000 calc(50% + 540px), #000 100%);
+  }
+  @media (max-width: 1080px) { #bgDots { -webkit-mask-image: none; mask-image: none; opacity: .35; } }
+
   footer { border-top: 1px solid var(--line-soft); padding: 28px 0 40px; font-size: 14px; color: var(--faint); }
   footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
 </style>
 </head>
 <body>
+<div class="bgfx" aria-hidden="true"><canvas id="bgDots"></canvas></div>
 <a class="skip" href="#main">Skip to the calculator</a>
 
 <header class="top">
@@ -164,25 +182,26 @@
   <section class="hero wrap">
     <p class="eyebrow">Free tool · runs in your browser</p>
     <h1>How wrong is your AI, <em>really?</em></h1>
-    <p class="lede">You tested an AI workflow on some examples and counted the mistakes. That count comes from a sample, so it isn't the true rate. This calculator shows the range the real error rate probably falls in, how many examples you'd need to be sure, and whether a change actually helped.</p>
+    <p class="lede">You tested your AI on some examples where you knew the right answer, and counted its mistakes. But a different batch of examples would give a different count, so that count isn't the whole story. This free calculator shows how often your AI is really likely to be wrong, how many examples you need to test to be sure, and whether a change you made actually helped.</p>
     <div class="presets" role="group" aria-label="Try an example">
-      <span>Try:</span>
-      <button type="button" data-n="50" data-k="3">3 wrong in 50</button>
-      <button type="button" data-n="500" data-k="36">36 wrong in 500</button>
-      <button type="button" data-n="20" data-k="0">A perfect 20</button>
+      <span>Try an example:</span>
+      <button type="button" data-n="50" data-k="3">3 wrong out of 50</button>
+      <button type="button" data-n="500" data-k="36">36 wrong out of 500</button>
+      <button type="button" data-n="20" data-k="0">0 wrong out of 20</button>
     </div>
   </section>
 
   <div class="cards wrap">
 
     <section class="card" aria-labelledby="h-range">
-      <p class="eyebrow" style="--c: var(--violet)">01 · The real error rate</p>
-      <h2 id="h-range">What's my real error rate?</h2>
+      <p class="eyebrow" style="--c: var(--violet)">Step 1 · Your real error rate</p>
+      <h2 id="h-range">How often is it really wrong?</h2>
+      <p class="card-sub">Enter your test results. An example is one test case you checked by hand: one question, one document, one task.</p>
       <div class="card-body">
         <div class="inputs">
-          <label class="field"><span>Examples tested</span>
+          <label class="field"><span>How many examples did you test?</span>
             <input id="n" type="number" inputmode="numeric" min="1" step="1" value="50"></label>
-          <label class="field"><span>How many were wrong</span>
+          <label class="field"><span>How many did it get wrong?</span>
             <input id="k" type="number" inputmode="numeric" min="0" step="1" value="3"></label>
         </div>
         <div class="result" id="out-range" aria-live="polite"></div>
@@ -190,18 +209,18 @@
     </section>
 
     <section class="card" aria-labelledby="h-need">
-      <p class="eyebrow" style="--c: var(--mint)">02 · Sample size</p>
-      <h2 id="h-need">How many examples do I need?</h2>
-      <p class="card-sub">Uses your numbers from step 1.</p>
+      <p class="eyebrow" style="--c: var(--mint)">Step 2 · Test size</p>
+      <h2 id="h-need">How many examples should I test?</h2>
+      <p class="card-sub">Pick the error rate you need to stay under. This uses your results from step 1.</p>
       <div class="card-body">
         <div class="inputs">
-          <label class="field"><span>Show the real error rate is under</span>
+          <label class="field"><span>I want my real error rate under</span>
             <span class="inline-input"><input id="t" type="number" inputmode="decimal" min="0.1" max="99" step="0.5" value="10"><span>%</span></span></label>
-          <label class="field"><span>Chance the test succeeds</span>
+          <label class="field"><span>How likely should the test be to prove it?</span>
             <select id="c">
-              <option value="0.8" selected>80%, the usual</option>
-              <option value="0.9">90%</option>
-              <option value="0.95">95%</option>
+              <option value="0.8" selected>80% likely (the usual)</option>
+              <option value="0.9">90% likely</option>
+              <option value="0.95">95% likely</option>
             </select></label>
         </div>
         <div class="result" id="out-need" aria-live="polite"></div>
@@ -209,38 +228,39 @@
     </section>
 
     <section class="card" aria-labelledby="h-cmp">
-      <p class="eyebrow" style="--c: var(--sky)">03 · Before vs. after</p>
+      <p class="eyebrow" style="--c: var(--sky)">Step 3 · Before and after</p>
       <h2 id="h-cmp">Did my change actually help?</h2>
-      <p class="card-sub">A new prompt, model or rule. Enter the results from testing each version. Re-ran the same examples on both? Say so: matching example by example spots changes that separate tests can't.</p>
+      <p class="card-sub">You changed something, like the prompt, the model or a rule, and tested before and after. Did it really get better, or could the difference be luck?</p>
       <div class="card-body">
         <div class="inputs">
-          <div class="mode" role="radiogroup" aria-label="How were the two versions tested?">
-            <label class="on"><input type="radio" name="mode" value="sep" checked>Separate tests</label>
-            <label><input type="radio" name="mode" value="same">Same examples both times</label>
+          <p class="group-label" id="mode-q">Did you test both versions on the same examples?</p>
+          <div class="mode" role="radiogroup" aria-labelledby="mode-q">
+            <label class="on"><input type="radio" name="mode" value="sep" checked>No, different examples</label>
+            <label><input type="radio" name="mode" value="same">Yes, the same examples</label>
           </div>
           <div id="sep-inputs" class="inputs">
             <p class="group-label">Before the change</p>
             <div class="pair">
-              <label class="field"><span>Tested</span><input id="bn" type="number" inputmode="numeric" min="1" step="1" value="50"></label>
-              <label class="field"><span>Wrong</span><input id="bk" type="number" inputmode="numeric" min="0" step="1" value="12"></label>
+              <label class="field"><span>Examples tested</span><input id="bn" type="number" inputmode="numeric" min="1" step="1" value="50"></label>
+              <label class="field"><span>Got wrong</span><input id="bk" type="number" inputmode="numeric" min="0" step="1" value="12"></label>
             </div>
             <p class="group-label">After the change</p>
             <div class="pair">
-              <label class="field"><span>Tested</span><input id="an" type="number" inputmode="numeric" min="1" step="1" value="50"></label>
-              <label class="field"><span>Wrong</span><input id="ak" type="number" inputmode="numeric" min="0" step="1" value="4"></label>
+              <label class="field"><span>Examples tested</span><input id="an" type="number" inputmode="numeric" min="1" step="1" value="50"></label>
+              <label class="field"><span>Got wrong</span><input id="ak" type="number" inputmode="numeric" min="0" step="1" value="4"></label>
             </div>
           </div>
           <div id="same-inputs" class="inputs" hidden>
             <div class="pair">
-              <label class="field"><span>Tested (each)</span><input id="sn" type="number" inputmode="numeric" min="1" step="1" value="50"></label>
-              <label class="field"><span>Wrong before</span><input id="sk" type="number" inputmode="numeric" min="0" step="1" value="12"></label>
+              <label class="field"><span>Examples tested</span><input id="sn" type="number" inputmode="numeric" min="1" step="1" value="50"></label>
+              <label class="field"><span>Wrong before the change</span><input id="sk" type="number" inputmode="numeric" min="0" step="1" value="12"></label>
             </div>
             <p class="group-label">What the change did</p>
             <div class="pair">
               <label class="field"><span>Fixed</span><input id="sf" type="number" inputmode="numeric" min="0" step="1" value="8"></label>
               <label class="field"><span>Broke</span><input id="sb" type="number" inputmode="numeric" min="0" step="1" value="1"></label>
             </div>
-            <p class="hint">Fixed: wrong before, right after. Broke: right before, wrong after. A side-by-side of the two runs shows both.</p>
+            <p class="hint">Fixed: wrong before, right after. Broke: right before, wrong after. Put the two runs side by side to count them.</p>
           </div>
         </div>
         <div class="result" id="out-cmp" aria-live="polite"></div>
@@ -256,32 +276,32 @@
   <section class="audit wrap" id="accuracy" aria-labelledby="h-audit">
     <p class="eyebrow" style="--c: var(--rose)">Measured, not assumed</p>
     <h2 id="h-audit">How often is this calculator wrong?</h2>
-    <p class="lede">A calculator about error rates should know its own. I tested it three ways: against a standard statistics library, against real rates I set myself (adding up the exact probability of every possible test result), and by grading its verdicts with my own eval harness.</p>
+    <p class="lede">A tool about error rates should know its own. I checked it three ways: against a standard statistics library, against error rates I set myself (so the right answer was known exactly), and by grading it with my own testing tool.</p>
     <div class="stats">
       <div class="stat" style="--c: var(--mint)">
-        <b>All 65,808</b>
-        <em>inputs identical to statsmodels</em>
-        <span>Every range matches a widely used statistics library, run with the same 1.96. Matched verdicts agree with its McNemar test on all 6,955 inputs tried.</span>
+        <b>65,808 of 65,808</b>
+        <em>answers match a standard statistics library</em>
+        <span>I ran 65,808 inputs through this calculator and through statsmodels, a widely used statistics library. Every answer matched. The same-examples answers in step 3 also matched its standard test on all 6,955 inputs tried.</span>
       </div>
       <div class="stat" style="--c: var(--violet)">
         <b>95.0–95.4%</b>
-        <em>of likely ranges contain the real rate</em>
-        <span>On average, from 10 to 1,000 examples. For real rates up to 50%, misses that understate the mistakes never pass 4.3%.</span>
+        <em>of ranges held the real error rate</em>
+        <span>A "probably between" range should hold the real rate 95 times in 100, and on tests of 10 to 1,000 examples it does. The risky kind of miss, a range that makes your AI look better than it really is, happened at most 4.3% of the time (for error rates up to 50%).</span>
       </div>
       <div class="stat" style="--c: var(--sky)">
         <b>87 of 87</b>
-        <em>sample-size plans keep their promise</em>
-        <span>29 scenarios at each of 80%, 90% and 95%, checked at every size up to four times the plan. The first version's answers worked only 42–92% of the time, so it was rebuilt.</span>
+        <em>test-size answers kept their promise</em>
+        <span>Step 2 says "test this many and you have an 80% (or 90%, or 95%) chance of proving it." I checked 87 of those answers, at every size up to four times the suggestion, and all 87 came true. My first version's answers came true only 42–92% of the time, so I rebuilt it.</span>
       </div>
       <div class="stat" style="--c: var(--amber)">
         <b>2.5%</b>
-        <em>false "Real improvement" when nothing changed</em>
-        <span>As designed, rising to 3.3% when the two tests differ a lot in size, and at most 2.65% for same-examples tests. Also graded on 2,600 scenarios by my eval harness.</span>
+        <em>false alarms when nothing changed</em>
+        <span>If a change did nothing at all, step 3 still says "Real improvement" 2.5% of the time, as designed. That rises to 3.3% when one test is much bigger than the other, and stays at or under 2.65% for same-examples tests. My testing tool also graded 2,600 scenarios.</span>
       </div>
       <div class="stat" style="--c: var(--orange)">
         <b>37% vs 8%</b>
-        <em>real changes spotted: matched vs. separate</em>
-        <span>A typical prompt fix (20% → 12%) re-run on the same 50 examples. Treating the two runs as separate tests throws most of that power away.</span>
+        <em>real improvements spotted: same vs. different examples</em>
+        <span>Take a typical prompt fix that cuts mistakes from 20% to 12%, tested on 50 examples. Comparing the same examples before and after spots it 37% of the time. Treating the two runs as separate tests spots it only 8% of the time.</span>
       </div>
     </div>
     <p class="audit-link"><a href="https://github.com/DHuberPortfolio/error-rate-calculator/blob/main/AUDIT.md" target="_blank" rel="noopener">Read the full audit: every table, what it found, and what changed →</a> Run it yourself: <code>npm test</code>, then <code>node audit/accuracy.js</code>.</p>
@@ -292,28 +312,28 @@
     <h2 id="h-how">The math, in plain words</h2>
     <div class="how-grid">
       <div>
-        <h3>What "likely range" means</h3>
-        <p>Test a different set of examples and you'd count a different number of mistakes. The likely range covers every real error rate that could plausibly have produced your count, at 95% confidence: build ranges this way over and over, and about 95 in 100 contain the real rate. Measured, that holds on average. Small tests at very low real rates miss more often, but those misses overstate the mistakes, the safe side.</p>
+        <h3>What "probably between" means</h3>
+        <p>Your count came from one batch of examples, and a different batch would give a different count. The range covers every real error rate that could easily have produced your count. "Probably" means 95% confidence: build ranges like this again and again, and about 95 in 100 hold the real rate. With small tests and very low error rates it misses more often, but those misses are on the safe side: they overstate the mistakes.</p>
       </div>
       <div>
-        <h3>Why not "6% ± a margin"?</h3>
-        <p>The textbook formula says 0 mistakes in 7 examples gives a range of exactly 0% to 0%, which is the overconfidence this tool exists to catch. This calculator uses Wilson's score interval instead. It stays honest at small counts and at 0%: a perfect 7 really means "somewhere up to about 35%."</p>
+        <h3>Why not just "6%, give or take"?</h3>
+        <p>The textbook formula says 0 mistakes in 7 examples means an error rate of exactly 0%, which is the kind of overconfidence this tool exists to catch. This calculator uses a better formula (Wilson's score interval) that stays honest with small numbers and with zero mistakes: a perfect 7 out of 7 really means "anywhere up to about 35%."</p>
       </div>
       <div>
         <h3>How many examples</h3>
-        <p>A new test's rate wobbles around the real one. Planning for the size where your current rate would just squeak under the target works only about half the time. So the calculator works out the exact chance of success at each size, and suggests the smallest test that clears your chosen chance at that size and every size above it.</p>
+        <p>A new test's count bounces around the real rate. Testing only enough for your current rate to just squeak under your goal works about half the time. So the calculator works out the exact odds at each test size, and suggests the smallest one that reaches the odds you picked, at that size and every size above it.</p>
       </div>
       <div>
         <h3>Comparing two versions</h3>
-        <p>Checking whether two ranges overlap is a common shortcut, and it's too cautious. It misses real improvements. This calculator builds a range for the difference itself (Newcombe's method), and calls the change real only when that whole range is on one side of zero.</p>
+        <p>A common rule of thumb says that if the two ranges overlap, nothing really changed. That rule is too cautious and misses real improvements. This calculator builds a range for the change itself (Newcombe's method), and calls it real only when that whole range is on one side of zero.</p>
       </div>
       <div>
-        <h3>Same examples both times</h3>
-        <p>When both versions ran on the same examples, the ones that came out the same say nothing about the change. Only two counts do: the examples it fixed and the ones it broke. The matched check (Tango's score interval, which agrees with McNemar's test) weighs just those, so it can see changes that separate-tests math blurs away.</p>
+        <h3>The same examples both times</h3>
+        <p>When both versions ran on the same examples, the ones that came out the same tell you nothing about the change. Only two counts matter: how many it fixed and how many it broke. The calculator weighs just those (Tango's score interval, which agrees with McNemar's test), so it can spot changes that two separate tests would blur.</p>
       </div>
       <div>
-        <h3>Same math as my eval harness</h3>
-        <p>Every rate in <a href="https://github.com/DHuberPortfolio/workflow-eval-harness" target="_blank" rel="noopener">workflow-eval-harness</a> is reported with this same range, so the two tools agree to the decimal. Nothing you type here is sent anywhere.</p>
+        <h3>Same math as my testing tool</h3>
+        <p>Every rate in <a href="https://github.com/DHuberPortfolio/workflow-eval-harness" target="_blank" rel="noopener">workflow-eval-harness</a>, my open-source tool for grading AI workflows, uses this same range, so the two tools agree to the decimal. Nothing you type here is sent anywhere.</p>
       </div>
     </div>
   </section>
@@ -358,8 +378,8 @@
   // A plain-words reason the counts can't be used, or null if they're fine.
   function countProblem(wrong, tested) {
     if (!Number.isInteger(tested) || tested < 1) return 'Enter how many examples you tested: a whole number, 1 or more.';
-    if (!Number.isInteger(wrong) || wrong < 0) return 'Enter how many were wrong: a whole number, 0 or more.';
-    if (wrong > tested) return "Mistakes can't be more than examples tested.";
+    if (!Number.isInteger(wrong) || wrong < 0) return 'Enter how many it got wrong: a whole number, 0 or more.';
+    if (wrong > tested) return "It can't get more wrong than you tested.";
     return null;
   }
 
@@ -400,18 +420,18 @@
     const width = (r.high - r.low) * 100;
     let say;
     if (k === 0) {
-      say = "Zero mistakes doesn't mean zero. A workflow that's really wrong <strong>" + pct(r.high) +
-        '</strong> of the time could easily get ' + count(n) + ' examples right in a row.';
+      say = "Zero mistakes doesn't prove it never makes them. An AI that's really wrong up to <strong>" + pct(r.high) +
+        '</strong> of the time could still get all ' + count(n) + ' examples right.';
     } else {
-      say = 'You saw <strong>' + pct(r.rate) + '</strong> (' + count(k) + ' of ' + count(n) + '). The real rate is likely between <strong>' +
-        pct(r.low) + '</strong> and <strong>' + pct(r.high) + '</strong>.';
+      say = 'It got <strong>' + count(k) + ' of ' + count(n) + '</strong> wrong (<strong>' + pct(r.rate) + '</strong>). Its real error rate, the one ' +
+        'you\'d see over thousands of uses, is probably between <strong>' + pct(r.low) + '</strong> and <strong>' + pct(r.high) + '</strong>.';
     }
     let note = '';
-    if (width > 10) note = '<p class="note"><strong>Plan for the high end.</strong> A range ' + width.toFixed(0) + ' points wide means this sample is too small to quote one number.</p>';
-    else if (width <= 4) note = '<p class="note"><strong>A tight range.</strong> ' + count(n) + ' examples is enough to quote this rate with confidence.</p>';
+    if (width > 10) note = '<p class="note"><strong>Plan for the worst end.</strong> This range is ' + width.toFixed(0) + ' points wide, so your test is too small to pin down one number. Step 2 shows how many examples would narrow it.</p>';
+    else if (width <= 4) note = '<p class="note"><strong>A tight range.</strong> ' + count(n) + ' examples is enough to pin this rate down.</p>';
     const max = axisMax(r.high);
     $('out-range').innerHTML =
-      '<p class="eyebrow" style="--c: var(--faint)">Likely range of the real error rate</p>' +
+      '<p class="eyebrow" style="--c: var(--faint)">Its real error rate is probably between</p>' +
       '<p class="big">' + pct(r.low) + ' – ' + pct(r.high) + '</p>' +
       '<div class="chart">' + bar(r, max) + axis(max) + '</div>' +
       '<p class="say">' + say + '</p>' + note;
@@ -428,7 +448,7 @@
       return;
     }
     if (tBad) {
-      $('out-need').innerHTML = '<p class="problem">Enter a target between 0% and 100%.</p>';
+      $('out-need').innerHTML = '<p class="problem">Enter an error rate between 0% and 100%.</p>';
       return;
     }
     const target = t / 100;
@@ -437,50 +457,50 @@
     if (![0.8, 0.9, 0.95].includes(chance)) { chance = 0.8; $('c').value = '0.8'; }
     const { n, r } = step1;
     const floor = recordsNeeded(0, target);
-    const floorNote = '<p class="note"><strong>The minimum for anyone:</strong> even a perfect run with zero mistakes needs ' +
-      count(floor) + ' examples to show the rate is under ' + tick(target) + '.</p>';
+    const floorNote = '<p class="note"><strong>The bare minimum:</strong> even a perfect score needs at least ' +
+      count(floor) + ' examples to prove the real error rate is under ' + tick(target) + '.</p>';
     if (r.high < target) {
-      $('out-need').innerHTML = '<span class="chip good">Already shown</span>' +
-        '<p class="say">Your whole likely range (' + pct(r.low) + ' – ' + pct(r.high) + ') is under ' + tick(target) + '. ' +
-        count(n) + ' examples is enough.</p>';
+      $('out-need').innerHTML = '<span class="chip good">Already proven</span>' +
+        '<p class="say">Your whole range (' + pct(r.low) + ' – ' + pct(r.high) + ') is under ' + tick(target) + ', so your ' +
+        count(n) + ' examples are enough.</p>';
       return;
     }
     const plan = planTest(r.rate, target, chance);
     if (plan === null) {
       $('out-need').innerHTML = '<span class="chip bad">More testing won\'t get you there</span>' +
-        '<p class="say">You\'re seeing <strong>' + pct(r.rate) + '</strong> mistakes, which is already at or above ' + tick(target) +
-        '. Fix the workflow, then test again.</p>' + floorNote;
+        '<p class="say">It\'s getting <strong>' + pct(r.rate) + '</strong> wrong, which is already at or above your ' + tick(target) +
+        ' goal. Testing more won\'t change that. Improve the AI first, then test again.</p>' + floorNote;
       return;
     }
     if (r.rate === 0) {
       // The floor note would repeat this same number, so it's left off.
       $('out-need').innerHTML = '<p class="eyebrow" style="--c: var(--faint)">Test at least</p>' +
         '<p class="big">' + count(plan.n) + ' <small>examples in total</small></p>' +
-        '<p class="say">That\'s <strong>' + count(plan.n - n) + ' more</strong> than you\'ve tested, and every one has to come back right. This is the minimum for anyone: even a perfect run needs ' +
-        count(plan.n) + ' examples to show the rate is under ' + tick(target) + '.</p>';
+        '<p class="say">That\'s <strong>' + count(plan.n - n) + ' more</strong> than you\'ve tested, and it has to get every one right. Even a perfect score needs ' +
+        count(plan.n) + ' examples to prove the real error rate is under ' + tick(target) + '.</p>';
       return;
     }
     if (plan.n > 1000000) {
       $('out-need').innerHTML = '<span class="chip wait">Over a million examples</span>' +
-        '<p class="say">At <strong>' + pct(r.rate) + '</strong> you\'re too close to ' + tick(target) +
-        ' to prove the difference by testing. Lower the error rate first.</p>' + floorNote;
+        '<p class="say">At <strong>' + pct(r.rate) + '</strong> it\'s too close to your ' + tick(target) +
+        ' goal to prove the difference by testing. Lower the error rate first.</p>' + floorNote;
       return;
     }
     let html = '<p class="eyebrow" style="--c: var(--faint)">Test about</p>' +
       '<p class="big">' + count(plan.n) + ' <small>examples in total</small></p>' +
-      '<p class="say">That\'s <strong>' + count(plan.n - n) + ' more</strong> than you\'ve tested. If the real rate is the ' + pct(r.rate) +
-      ' you\'ve seen, testing ' + count(plan.n) + ' or more gives ' + (plan.exact ? 'at least ' : 'about ') +
+      '<p class="say">That\'s <strong>' + count(plan.n - n) + ' more</strong> than you\'ve tested. If your AI is really wrong ' + pct(r.rate) +
+      ' of the time, a test of ' + count(plan.n) + ' examples has ' + (plan.exact ? 'at least ' : 'about ') +
       (chance === 0.8 ? 'an' : 'a') + ' <strong>' + chancePct(chance) +
-      ' chance</strong> that the whole likely range lands under ' + tick(target) + '.</p>';
+      ' chance</strong> of proving its real error rate is under ' + tick(target) + '.</p>';
     // Why not the obvious number? Show how often it would really work.
     const breakEven = recordsNeeded(r.rate, target);
     if (plan.exact && breakEven < plan.n) {
-      html += '<p class="note"><strong>Why not ' + count(breakEven) + '?</strong> That\'s where ' + pct(r.rate) + ' would just squeak under ' +
-        tick(target) + '. But a new test\'s rate wobbles, so ' + count(breakEven) + ' examples works only <strong>' +
+      html += '<p class="note"><strong>Why not ' + count(breakEven) + '?</strong> At ' + count(breakEven) + ' examples, ' + pct(r.rate) +
+        ' would only just prove it. But each new test\'s count bounces around a little, so a ' + count(breakEven) + '-example test would prove it only <strong>' +
         chancePct(chanceOfShowing(breakEven, r.rate, target)) + '</strong> of the time.</p>';
     }
     if (!plan.exact) {
-      html += '<p class="note"><strong>An estimate.</strong> A test this big is planned with the textbook formula; the exact check runs for plans up to 5,000.</p>';
+      html += '<p class="note"><strong>An estimate.</strong> For a test this big the calculator uses the standard formula; it works out the exact odds for tests up to 5,000.</p>';
     }
     $('out-need').innerHTML = html + floorNote;
   }
@@ -500,20 +520,20 @@
   function verdictWords(c, from, to, how) {
     if (c.verdict === 'better') {
       return ['<span class="chip good">Real improvement</span>',
-        'Mistakes fell from <strong>' + from + '</strong> to <strong>' + to + '</strong>' + how + '. The real drop is likely between <strong>' +
-        pts(c.low) + '</strong> and <strong>' + pts(c.high) + ' points</strong>, so it\'s more than luck.'];
+        'Mistakes fell from <strong>' + from + '</strong> to <strong>' + to + '</strong>' + how + '. The real drop is probably between <strong>' +
+        pts(c.low) + '</strong> and <strong>' + pts(c.high) + ' percentage points</strong>, so it\'s not just luck.'];
     }
     if (c.verdict === 'worse') {
       return ['<span class="chip bad">It got worse</span>',
-        'Mistakes rose from <strong>' + from + '</strong> to <strong>' + to + '</strong>' + how + '. The real rise is likely between <strong>' +
-        pts(-c.high) + '</strong> and <strong>' + pts(-c.low) + ' points</strong>, so it\'s more than luck.'];
+        'Mistakes rose from <strong>' + from + '</strong> to <strong>' + to + '</strong>' + how + '. The real rise is probably between <strong>' +
+        pts(-c.high) + '</strong> and <strong>' + pts(-c.low) + ' percentage points</strong>, so it\'s not just luck.'];
     }
     return ['<span class="chip wait">Can\'t tell yet</span>',
-      'Mistakes went from <strong>' + from + '</strong> to <strong>' + to + '</strong>' + how + ', but the real change is likely anywhere from a drop of <strong>' +
-      pts(c.high) + '</strong> to a rise of <strong>' + pts(-c.low) + ' points</strong>. That\'s too wide to call.'];
+      'Mistakes went from <strong>' + from + '</strong> to <strong>' + to + '</strong>' + how + ', but the real change could be anything from a drop of <strong>' +
+      pts(c.high) + '</strong> to a rise of <strong>' + pts(-c.low) + ' percentage points</strong>. That\'s too wide to call.'];
   }
 
-  const OVERLAP_NOTE = '<p class="note"><strong>The two ranges overlap, and the change is still real.</strong> Checking for overlap is a common shortcut, but it misses real changes like this one.</p>';
+  const OVERLAP_NOTE = '<p class="note"><strong>The two ranges overlap, but the change is still real.</strong> A common rule of thumb says overlapping ranges mean "no real difference." That rule is too cautious and misses real changes like this one.</p>';
 
   function drawCompare(c, chip, say, note) {
     const from = pct(c.before.rate), to = pct(c.after.rate);
@@ -551,7 +571,7 @@
     if (c.verdict === 'unclear') {
       const per = perVersionForChange(c.before.rate, c.after.rate);
       if (per === null) {
-        note = '<p class="note"><strong>No difference seen,</strong> so there\'s no change to size a bigger test for.</p>';
+        note = '<p class="note"><strong>Both versions got the same share wrong,</strong> so there\'s no difference for a bigger test to measure.</p>';
       } else {
         note = '<p class="note"><strong>To find out:</strong> if the real rates are the ' + from + ' and ' + to + ' you saw, test about <strong>' +
           count(per) + ' examples on each version</strong> for an 80% chance of a clear answer.</p>';
@@ -562,8 +582,8 @@
 
   // The same examples, run on both versions.
   function sameProblem(n, wrong, fixed, broke) {
-    if (!Number.isInteger(n) || n < 1) return [['sn'], 'Enter how many examples each version ran on: a whole number, 1 or more.'];
-    if (!Number.isInteger(wrong) || wrong < 0 || wrong > n) return [['sk'], 'Wrong before must be a whole number from 0 to ' + count(n) + '.'];
+    if (!Number.isInteger(n) || n < 1) return [['sn'], 'Enter how many examples both versions ran on: a whole number, 1 or more.'];
+    if (!Number.isInteger(wrong) || wrong < 0 || wrong > n) return [['sk'], '"Wrong before the change" must be a whole number from 0 to ' + count(n) + '.'];
     if (!Number.isInteger(fixed) || fixed < 0) return [['sf'], 'Enter how many the change fixed: a whole number, 0 or more.'];
     if (fixed > wrong) return [['sf'], 'The change can\'t fix more examples than were wrong before (' + count(wrong) + ').'];
     if (!Number.isInteger(broke) || broke < 0) return [['sb'], 'Enter how many the change broke: a whole number, 0 or more.'];
@@ -593,19 +613,19 @@
     const unchanged = n - fixed - broke;
     let note = '';
     if (c.verdict !== 'unclear' && separate === 'unclear') {
-      note = '<p class="note"><strong>Treated as two separate tests, these totals would say "Can\'t tell yet."</strong> Matching is what tells: the ' +
-        count(unchanged) + ' examples that came out the same both times say nothing about the change, so only the ' + count(fixed + broke) + ' that changed are weighed.</p>';
+      note = '<p class="note"><strong>With different examples, this would say "Can\'t tell yet."</strong> Using the same examples is what makes it clear: the ' +
+        count(unchanged) + ' that came out the same both times tell you nothing about the change, so only the ' + count(fixed + broke) + ' that changed count.</p>';
     } else if (c.verdict === 'unclear' && separate !== 'unclear') {
-      note = '<p class="note"><strong>Treated as separate tests, these totals would look like a clear change.</strong> But only the ' +
-        count(fixed + broke) + ' examples that changed carry evidence (' + count(fixed) + ' fixed, ' + count(broke) +
-        ' broke), and that isn\'t enough to rule out luck.</p>';
+      note = '<p class="note"><strong>As two separate tests, these totals would look like a clear change.</strong> But only the ' +
+        count(fixed + broke) + ' examples that changed tell you anything (' + count(fixed) + ' fixed, ' + count(broke) +
+        ' broke), and that\'s not enough to rule out luck.</p>';
     } else if (c.verdict !== 'unclear' && c.rangesOverlap) {
       note = OVERLAP_NOTE;
     }
     if (c.verdict === 'unclear') {
       const per = pairedForChange(fixed / n, broke / n);
       note += per === null
-        ? '<p class="note"><strong>The change fixed as many as it broke,</strong> so there\'s no change to size a bigger test for.</p>'
+        ? '<p class="note"><strong>The change fixed as many as it broke,</strong> so there\'s no difference for a bigger test to measure.</p>'
         : '<p class="note"><strong>To find out:</strong> if the change keeps fixing about ' + pct(fixed / n) + ' and breaking ' + pct(broke / n) +
           ' of examples, test about <strong>' + count(per) + ' examples on both versions</strong> for an 80% chance of a clear answer.</p>';
     }
@@ -666,6 +686,68 @@
 
   loadFromLink();
   renderAll();
+})();
+
+// The background: a few dozen dots drifting slowly, with a faint line between close
+// neighbours. Decoration only; it pauses when the tab is hidden and stays still for
+// anyone who prefers reduced motion.
+(function () {
+  'use strict';
+  const canvas = document.getElementById('bgDots');
+  if (!canvas || !canvas.getContext) return;
+  const ctx = canvas.getContext('2d');
+  const COLOURS = ['#A78BFA', '#5EEAD4', '#7DD3FC', '#FB7185', '#FBBF5C'];
+  const LINK = 130 * 130;   // squared distance under which two dots get a line
+  const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let w = 0, h = 0, frame = 0;
+  const dots = [];
+
+  function size() {
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    w = canvas.clientWidth; h = canvas.clientHeight;
+    canvas.width = w * ratio; canvas.height = h * ratio;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    const want = Math.min(80, Math.round((w * h) / 22000));
+    while (dots.length < want) {
+      dots.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.16, vy: (Math.random() - 0.5) * 0.16,
+        r: 0.8 + Math.random() * 1.4, c: COLOURS[Math.floor(Math.random() * COLOURS.length)] });
+    }
+    dots.length = want;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    ctx.lineWidth = 1;
+    for (let i = 0; i < dots.length; i++) {
+      for (let j = i + 1; j < dots.length; j++) {
+        const dx = dots[i].x - dots[j].x, dy = dots[i].y - dots[j].y, d = dx * dx + dy * dy;
+        if (d < LINK) {
+          ctx.strokeStyle = 'rgba(163,174,196,' + (0.22 * (1 - d / LINK)).toFixed(3) + ')';
+          ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke();
+        }
+      }
+    }
+    ctx.globalAlpha = 0.75;
+    for (const p of dots) { ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  }
+
+  function step() {
+    for (const p of dots) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < -10) p.x = w + 10; else if (p.x > w + 10) p.x = -10;
+      if (p.y < -10) p.y = h + 10; else if (p.y > h + 10) p.y = -10;
+    }
+    draw();
+    frame = document.hidden ? 0 : requestAnimationFrame(step);
+  }
+
+  size(); draw();
+  window.addEventListener('resize', () => { size(); draw(); });
+  if (!still) {
+    frame = requestAnimationFrame(step);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && !frame) frame = requestAnimationFrame(step); });
+  }
 })();
 </script>
 </body>
