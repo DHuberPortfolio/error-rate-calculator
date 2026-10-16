@@ -1,0 +1,14 @@
+{
+  "id_field": "id",
+  "trap_field": "trap",
+  "min_per_trap": 100,
+  "outputs": {
+    "verdict": { "type": "label", "labels": ["better", "worse", "unclear"] }
+  },
+  "routing": {
+    "field": "route",
+    "gold_field": "expected_route",
+    "map": { "CONFIDENT": "auto", "CANT_TELL_YET": "review" }
+  },
+  "wrong_when": "either"
+}

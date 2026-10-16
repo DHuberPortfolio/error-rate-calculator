@@ -1,0 +1,13 @@
+{
+  "name": "error-rate-calculator",
+  "version": "0.1.0",
+  "description": "How wrong is your AI, really? The likely range of a measured error rate, how many records you need, and whether a change really helped.",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18.3"
+  },
+  "license": "MIT"
+}
